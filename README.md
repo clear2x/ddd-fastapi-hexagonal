@@ -4,8 +4,6 @@
 
 项目刻意保持精简，目标不是堆功能，而是让目录分层、依赖方向、测试边界与协作约定都足够清晰，适合作为学习、脚手架参考或团队内部 PoC 起点。
 
-仓库地址：<https://github.com/clear2x/ddd-fastapi-hexagonal>
-
 ## 项目目标
 
 这个示例重点展示：
@@ -34,18 +32,9 @@ src/task_management/
   infrastructure/        # 数据库与仓储实现等基础设施
   interfaces/http/       # FastAPI 路由与请求/响应模型
 tests/
-  conftest.py            # 测试共享夹具与公共初始化
   test_api.py            # HTTP 接口集成测试
   test_application.py    # 应用层用例测试
   test_domain.py         # 领域模型单元测试
-  test_quality.py        # 质量约定与结构性守护测试
-.github/
-  ISSUE_TEMPLATE/        # Issue 模板
-  pull_request_template.md
-  workflows/ci.yml       # 持续集成检查
-docs/
-  architecture.md        # 架构说明
-  testing.md             # 测试策略
 ```
 
 ## API 概览
@@ -56,6 +45,46 @@ docs/
 - `POST /api/v1/tasks/{task_id}/assignments`
 - `POST /api/v1/tasks/{task_id}/completion`
 - `GET /health`
+
+### HTTP 返回契约
+
+成功响应统一为：
+
+```json
+{
+  "data": {}
+}
+```
+
+错误响应统一为：
+
+```json
+{
+  "error": {
+    "code": "REQUEST_VALIDATION_ERROR",
+    "message": "请求参数校验失败",
+    "details": []
+  }
+}
+```
+
+常见状态码语义：
+
+- `422`：请求体缺字段、类型不匹配、字符串全空白等输入校验失败
+- `404`：任务不存在
+- `409`：任务已完成，不能重复完成
+- `400`：进入领域层后触发业务规则错误
+
+### description 空值归一化策略
+
+`POST /api/v1/tasks` 的 `description` 字段采用以下策略：
+
+- 未传：保存为 `null`
+- 显式传 `null`：保存为 `null`
+- 传入仅包含空白字符的字符串：会先 `trim`，然后归一化为 `null`
+- 传入非空字符串：会 `trim` 后保存
+
+这样做的目的是把“没有描述”和“空白描述”收敛成同一种语义，避免把无意义空字符串写入领域对象或持久化层。
 
 ## 本地开发
 
@@ -82,13 +111,13 @@ uvicorn task_management.main:app --reload
 
 ```bash
 python -m pytest
-python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80
+python -m pytest --cov=task_management --cov-report=term-missing
 ruff check .
 ```
 
 ## 测试策略
 
-本项目把测试分为四层：
+本项目把测试分为三层：
 
 ### 1. 领域层单元测试
 
@@ -96,35 +125,19 @@ ruff check .
 
 示例：
 - 空标题不可创建任务
+- 空白描述不能直接进入领域对象
+- 空白指派人不可指派
 - 已完成任务不可重复完成
-- 创建任务时默认状态正确
 
-### 2. 应用层用例测试
-
-关注用例编排与 DTO 输入输出是否稳定。
-
-示例：
-- 创建任务用例返回规范视图对象
-- 查询列表用例正确处理筛选条件
-
-### 3. HTTP 接口集成测试
+### 2. HTTP 接口集成测试
 
 关注接口契约、状态码和关键返回字段。
 
 示例：
-- `GET /health` 返回健康状态
+- `GET /health` 返回统一成功结构
 - 任务生命周期接口能串通创建、查询、指派、完成流程
-- 非法或不存在资源应返回明确错误
-
-### 4. 质量守护测试
-
-关注项目协作与架构约定，避免“项目还能跑，但约定已经悄悄坏掉”。
-
-示例：
-- README 中必须说明测试与质量检查命令
-- `.github/workflows/ci.yml` 必须存在
-- PR / Issue 模板必须存在
-- 质量守护测试文件本身必须纳入仓库
+- create / assign 的缺字段与全空白输入会返回 `422`
+- description 空白值会被归一化为 `null`
 
 ## 质量约定
 
@@ -134,54 +147,7 @@ ruff check .
 - **类名、函数名、模块名保持英文**，与 Python 生态一致
 - 新增功能时，至少补充对应层级测试之一
 - 修复缺陷时，优先补一个可复现该问题的测试
-- PR 应说明改动边界、测试方式、潜在影响
 - 不把复杂业务逻辑直接塞进 FastAPI 路由
-
-## 持续集成（CI）
-
-CI 的质量守护意图是：**一次执行就同时给出代码风格、测试结果与覆盖率结论**，减少重复跑 `pytest` 带来的耗时和噪音。
-
-当前 CI 默认执行以下步骤：
-
-1. 安装项目与开发依赖
-2. 运行 `ruff check .`，只要存在未修复的静态检查问题就直接失败
-3. 运行 `python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80`
-   - 只要有任一测试失败，CI 失败
-   - 只要覆盖率低于 **80%**，CI 失败
-
-如果你准备扩展该仓库，建议把以下检查逐步纳入：
-
-- 格式化检查
-- 类型检查
-- 多 Python 版本矩阵
-- 更细的覆盖率分层门槛
-
-## 协作流程建议
-
-- 提交前先运行：
-
-```bash
-ruff check .
-python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80
-```
-
-- 发起 PR 时重点说明：
-  - 改了哪一层
-  - 为什么这样改
-  - 如何验证
-  - 是否影响现有 API 或领域规则
-
-## 并行开发策略
-
-当前建议的并行工作分支：
-- `feat/domain-core`
-- `feat/http-api`
-- `feat/tests-docs-ci`
-
-相关文档：
-- `docs/architecture.md`
-- `docs/testing.md`
-- `CONTRIBUTING.md`
 
 ## 为什么这算六边形架构
 
