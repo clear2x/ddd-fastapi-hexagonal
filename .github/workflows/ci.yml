@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - feat/**
+      - fix/**
+      - chore/**
+  pull_request:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Ruff 检查
+        run: ruff check .
+
+      - name: Pytest 检查
+        run: python -m pytest
+
+      - name: 覆盖率检查
+        run: python -m pytest --cov=task_management --cov-report=term-missing
