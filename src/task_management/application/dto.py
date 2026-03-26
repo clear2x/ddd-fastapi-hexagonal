@@ -25,6 +25,12 @@ class CompleteTaskCommand:
 
 
 @dataclass(frozen=True)
+class ListTasksQuery:
+    status: Optional[str] = None
+    assignee_id: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class TaskView:
     id: str
     title: str
@@ -40,8 +46,8 @@ class TaskView:
         return TaskView(
             id=task.id.value,
             title=task.title.value,
-            description=task.description,
-            assignee_id=task.assignee_id,
+            description=task.description.value if task.description is not None else None,
+            assignee_id=task.assignee_id.value if task.assignee_id is not None else None,
             status=task.status,
             created_at=task.created_at,
             updated_at=task.updated_at,

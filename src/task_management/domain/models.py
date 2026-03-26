@@ -6,23 +6,18 @@ from enum import Enum
 from typing import Optional
 from uuid import uuid4
 
+from task_management.domain.errors import (
+    InvalidAssigneeIdError,
+    InvalidTaskDescriptionError,
+    InvalidTaskTitleError,
+    TaskAlreadyCompletedError,
+)
+
 
 class TaskStatus(str, Enum):
     PENDING = "pending"
     ASSIGNED = "assigned"
     COMPLETED = "completed"
-
-
-class DomainError(Exception):
-    """Base domain error."""
-
-
-class InvalidTaskTitleError(DomainError):
-    pass
-
-
-class TaskAlreadyCompletedError(DomainError):
-    pass
 
 
 @dataclass(frozen=True)
@@ -41,9 +36,35 @@ class TaskTitle:
     def __post_init__(self) -> None:
         normalized = self.value.strip()
         if not normalized:
-            raise InvalidTaskTitleError("Task title must not be empty.")
+            raise InvalidTaskTitleError("任务标题不能为空。")
         if len(normalized) > 200:
-            raise InvalidTaskTitleError("Task title must be at most 200 characters.")
+            raise InvalidTaskTitleError("任务标题长度不能超过 200 个字符。")
+        object.__setattr__(self, "value", normalized)
+
+
+@dataclass(frozen=True)
+class TaskDescription:
+    value: str
+
+    def __post_init__(self) -> None:
+        normalized = self.value.strip()
+        if not normalized:
+            raise InvalidTaskDescriptionError("任务描述不能为空字符串。")
+        if len(normalized) > 2000:
+            raise InvalidTaskDescriptionError("任务描述长度不能超过 2000 个字符。")
+        object.__setattr__(self, "value", normalized)
+
+
+@dataclass(frozen=True)
+class AssigneeId:
+    value: str
+
+    def __post_init__(self) -> None:
+        normalized = self.value.strip()
+        if not normalized:
+            raise InvalidAssigneeIdError("指派人标识不能为空。")
+        if len(normalized) > 128:
+            raise InvalidAssigneeIdError("指派人标识长度不能超过 128 个字符。")
         object.__setattr__(self, "value", normalized)
 
 
@@ -51,8 +72,8 @@ class TaskTitle:
 class Task:
     id: TaskId
     title: TaskTitle
-    description: Optional[str] = None
-    assignee_id: Optional[str] = None
+    description: Optional[TaskDescription] = None
+    assignee_id: Optional[AssigneeId] = None
     status: TaskStatus = TaskStatus.PENDING
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -63,21 +84,18 @@ class Task:
         return cls(
             id=TaskId.new(),
             title=TaskTitle(title),
-            description=description.strip() if description else None,
+            description=TaskDescription(description) if description is not None else None,
         )
 
     def assign(self, assignee_id: str) -> None:
-        cleaned = assignee_id.strip()
-        if not cleaned:
-            raise ValueError("assignee_id must not be empty")
-        self.assignee_id = cleaned
+        self.assignee_id = AssigneeId(assignee_id)
         if self.status != TaskStatus.COMPLETED:
             self.status = TaskStatus.ASSIGNED
         self.updated_at = datetime.now(timezone.utc)
 
     def complete(self) -> None:
         if self.status == TaskStatus.COMPLETED:
-            raise TaskAlreadyCompletedError("Task is already completed.")
+            raise TaskAlreadyCompletedError("任务已完成，不能重复完成。")
         now = datetime.now(timezone.utc)
         self.status = TaskStatus.COMPLETED
         self.completed_at = now

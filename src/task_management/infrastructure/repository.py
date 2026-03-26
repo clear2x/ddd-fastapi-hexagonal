@@ -7,7 +7,7 @@ from typing import Optional
 from sqlalchemy import DateTime, String, Text, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
-from task_management.domain.models import Task, TaskId, TaskStatus, TaskTitle
+from task_management.domain.models import AssigneeId, Task, TaskDescription, TaskId, TaskStatus, TaskTitle
 from task_management.domain.ports import TaskRepository
 
 
@@ -57,8 +57,8 @@ class SqlAlchemyTaskRepository(TaskRepository):
             self.session.add(self._to_model(task))
         else:
             model.title = task.title.value
-            model.description = task.description
-            model.assignee_id = task.assignee_id
+            model.description = task.description.value if task.description is not None else None
+            model.assignee_id = task.assignee_id.value if task.assignee_id is not None else None
             model.status = task.status.value
             model.created_at = task.created_at
             model.updated_at = task.updated_at
@@ -70,8 +70,8 @@ class SqlAlchemyTaskRepository(TaskRepository):
         return Task(
             id=TaskId(model.id),
             title=TaskTitle(model.title),
-            description=model.description,
-            assignee_id=model.assignee_id,
+            description=TaskDescription(model.description) if model.description is not None else None,
+            assignee_id=AssigneeId(model.assignee_id) if model.assignee_id is not None else None,
             status=TaskStatus(model.status),
             created_at=model.created_at,
             updated_at=model.updated_at,
@@ -83,8 +83,8 @@ class SqlAlchemyTaskRepository(TaskRepository):
         return TaskModel(
             id=task.id.value,
             title=task.title.value,
-            description=task.description,
-            assignee_id=task.assignee_id,
+            description=task.description.value if task.description is not None else None,
+            assignee_id=task.assignee_id.value if task.assignee_id is not None else None,
             status=task.status.value,
             created_at=task.created_at,
             updated_at=task.updated_at,
