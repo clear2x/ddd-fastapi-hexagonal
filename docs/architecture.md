@@ -1,33 +1,44 @@
-# Architecture
+# 架构说明
 
-This project demonstrates a small but readable DDD + Hexagonal Architecture example.
+这个项目用于演示一个**小而清晰**的 DDD + 六边形架构示例。
 
-## Layers
+## 分层说明
 
-- **Domain**: business model and invariants
-- **Application**: use-case orchestration
-- **Infrastructure**: persistence and runtime concerns
-- **Interfaces**: HTTP API via FastAPI
+- **Domain**：业务模型、业务规则、不变量
+- **Application**：用例编排
+- **Infrastructure**：持久化与运行时支撑
+- **Interfaces**：HTTP API 等入站接口
 
-## Dependency direction
+## 依赖方向
 
-Outer layers depend on inner abstractions.
+外层依赖内层抽象，避免核心业务反向依赖框架与基础设施。
 
 - interfaces -> application
 - application -> domain
 - infrastructure -> domain/application ports
-- domain -> nothing external
+- domain -> 不依赖外部框架
 
-## Example domain
+## 示例领域
 
-The demo uses a Task Management domain:
-- create task
-- get task
-- list tasks
-- assign task
-- complete task
+当前示例使用的是任务管理领域，包含：
+- 创建任务
+- 获取任务
+- 查询任务列表
+- 指派任务
+- 完成任务
 
-## Why this repository stays intentionally small
+## 为什么这个仓库会保持克制
 
-The goal is not feature richness.
-The goal is to make architectural boundaries easy to read and easy to extend.
+目标不是做一个功能非常多的任务系统。
+
+目标是把这些东西讲清楚：
+- 领域层该放什么
+- 应用层该负责什么
+- 基础设施如何通过端口接进来
+- HTTP 层如何只做适配，不污染业务核心
+
+因此这个仓库会优先保证：
+- 结构可读
+- 边界清楚
+- 容易扩展
+- 适合教学和开源示例阅读

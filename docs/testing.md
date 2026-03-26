@@ -1,20 +1,30 @@
-# Testing Strategy
+# 测试策略
 
-## Pyramid
+## 测试金字塔
 
-1. Domain unit tests
-2. Application use-case tests
-3. API integration tests
-4. Minimal end-to-end smoke tests
+建议按下面 4 层推进：
 
-## Current MVP focus
+1. 领域层单元测试
+2. 应用层用例测试
+3. API 集成测试
+4. 最少量端到端冒烟测试
 
-- Task creation rules
-- Task completion rules
-- Basic API lifecycle
+## 当前 MVP 重点
 
-## Next additions
+当前优先覆盖：
+- 任务创建规则
+- 任务完成规则
+- 基础 API 生命周期
 
-- Repository contract tests
-- Error response contract tests
-- CI execution for tests and lint
+## 下一步补强方向
+
+后续会继续补：
+- 仓储契约测试
+- 错误响应契约测试
+- CI 中的测试与静态检查
+
+## 原则
+
+- 优先保护业务规则
+- 不让测试过度依赖基础设施细节
+- 用最少的 E2E 测试守住关键主路径
