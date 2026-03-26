@@ -2,6 +2,8 @@
 
 A minimal open-source example project showing how to build a DDD + Hexagonal Architecture service with Python and FastAPI.
 
+Repository: <https://github.com/clear2x/ddd-fastapi-hexagonal>
+
 ## What this project demonstrates
 
 - Domain-driven design (DDD)
@@ -28,6 +30,7 @@ src/task_management/
   infrastructure/
   interfaces/http/
 tests/
+docs/
 ```
 
 ## API
@@ -48,6 +51,27 @@ pip install -e .[dev]
 uvicorn task_management.main:app --reload
 pytest
 ```
+
+## CI
+
+GitHub Actions runs tests on push and pull request.
+
+## Contributing strategy
+
+Current parallel work split:
+- `feat/domain-core`
+- `feat/http-api`
+- `feat/tests-docs-ci`
+
+See also:
+- `docs/architecture.md`
+- `docs/testing.md`
+- `CONTRIBUTING.md`
+
+## Current status
+
+This repository already contains a working MVP code structure and initial test files.
+The next step is to deepen domain boundaries, improve HTTP error modeling, and strengthen tests and documentation.
 
 ## Why this is hexagonal
 
