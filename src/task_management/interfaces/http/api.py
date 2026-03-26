@@ -4,7 +4,13 @@ from fastapi import APIRouter, FastAPI, Query, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from task_management.application.dto import AssignTaskCommand, CompleteTaskCommand, CreateTaskCommand, ListTasksQuery
+from task_management.application.dto import (
+    AssignTaskCommand,
+    CompleteTaskCommand,
+    CreateTaskCommand,
+    GetTaskQuery,
+    ListTasksQuery,
+)
 from task_management.application.use_cases import (
     AssignTaskUseCase,
     CompleteTaskUseCase,
@@ -50,6 +56,7 @@ def _to_response(view) -> TaskResponse:
 
 
 def _success_response(data):
+    """构造统一成功响应结构。"""
     return ApiResponse(data=data)
 
 
@@ -67,6 +74,7 @@ def _error_response(
 
 
 def _validation_error_detail(exc: RequestValidationError) -> list[dict[str, object]]:
+    """把 FastAPI/Pydantic 的校验错误转换为稳定的字段级错误列表。"""
     details: list[dict[str, object]] = []
     for error in exc.errors():
         details.append(
@@ -120,7 +128,7 @@ def create_task(payload: CreateTaskRequest) -> ApiResponse[TaskResponse]:
     responses={404: {"model": ErrorResponse}},
 )
 def get_task(task_id: str) -> ApiResponse[TaskResponse]:
-    view = GetTaskUseCase(_repository()).execute(task_id)
+    view = GetTaskUseCase(_repository()).execute(GetTaskQuery(task_id=task_id))
     return _success_response(_to_response(view))
 
 

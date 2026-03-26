@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class CreateTaskRequest(BaseModel):
+    """创建任务请求模型。description 会执行空值归一化。"""
+
     title: str = Field(min_length=1, max_length=200)
     description: Optional[str] = Field(default=None, max_length=2000)
 
@@ -21,6 +23,7 @@ class CreateTaskRequest(BaseModel):
     @field_validator("description")
     @classmethod
     def validate_description(cls, value: Optional[str]) -> Optional[str]:
+        """把未传、null 和全空白字符串统一归一化为 None。"""
         if value is None:
             return None
         normalized = value.strip()
