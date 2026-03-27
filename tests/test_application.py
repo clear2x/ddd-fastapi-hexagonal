@@ -57,14 +57,16 @@ class InMemoryTaskReadModelStore(TaskReadModelStore, TaskQueryService):
             completed_at=None,
         )
 
-    def _get_required_model(self, task_id: str) -> TaskReadModel:
-        model = self.items.get(task_id)
-        if model is None:
-            raise TaskReadModelNotProjectedError(f"任务读模型缺失：{task_id}")
-        return model
+    def _require_item(self, task_id: str) -> TaskReadModel:
+        item = self.items.get(task_id)
+        if item is None:
+            raise TaskReadModelNotProjectedError(
+                f"读模型缺失：task_id={task_id}。写模型可能已存在，但查询侧投影未完成或已损坏。"
+            )
+        return item
 
     def assign_task(self, *, task_id: str, assignee_id: str, occurred_at: datetime) -> None:
-        item = self._get_required_model(task_id)
+        item = self._require_item(task_id)
         self.items[task_id] = TaskReadModel(
             id=item.id,
             title=item.title,
@@ -83,7 +85,7 @@ class InMemoryTaskReadModelStore(TaskReadModelStore, TaskQueryService):
         completed_at: datetime,
         occurred_at: datetime,
     ) -> None:
-        item = self._get_required_model(task_id)
+        item = self._require_item(task_id)
         self.items[task_id] = TaskReadModel(
             id=item.id,
             title=item.title,
@@ -149,19 +151,18 @@ def test_list_tasks_use_case_uses_query_object() -> None:
 def test_assign_fails_explicitly_when_write_model_exists_but_read_model_is_missing() -> None:
     repository = InMemoryTaskRepository()
     read_store = InMemoryTaskReadModelStore()
-    event_bus = InMemoryDomainEventBus([TaskReadModelProjector(read_store).handle])
-    created = CreateTaskUseCase(repository, event_bus).execute(CreateTaskCommand(title="Projection gap"))
-
-    read_store.items.pop(created.id)
+    created = CreateTaskUseCase(repository).execute(CreateTaskCommand(title="Broken projection state"))
 
     try:
-        AssignTaskUseCase(repository, event_bus=event_bus).execute(
-            AssignTaskCommand(task_id=created.id, assignee_id="user_002")
-        )
+        AssignTaskUseCase(
+            repository,
+            event_bus=InMemoryDomainEventBus([TaskReadModelProjector(read_store).handle]),
+        ).execute(AssignTaskCommand(task_id=created.id, assignee_id="user_001"))
     except TaskReadModelNotProjectedError as exc:
         assert created.id in str(exc)
+        assert read_store.get(created.id) is None
     else:
-        raise AssertionError("missing read model should be raised explicitly")
+        raise AssertionError("missing read model should fail explicitly instead of being swallowed")
 
 
 def test_acl_translator_maps_external_snapshot_into_internal_draft() -> None:

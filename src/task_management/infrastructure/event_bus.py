@@ -7,7 +7,11 @@ from task_management.domain.events import DomainEvent
 
 
 class InMemoryDomainEventBus(DomainEventBus):
-    """同步事件总线，适合教学项目与单进程场景。"""
+    """同步事件总线，适合教学项目与单进程场景。
+
+    这里刻意不实现事务 outbox、异步重试、跨进程投递等生产能力，
+    只用于把“聚合产生领域事件 -> 读模型同步投影”这条教学主路径讲清楚。
+    """
 
     def __init__(self, handlers: Iterable[Callable[[DomainEvent], None]] | None = None) -> None:
         self.handlers = list(handlers or [])

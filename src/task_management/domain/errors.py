@@ -27,3 +27,7 @@ class TaskAssignmentNotAllowedError(DomainError):
 
 class TaskNotFoundError(DomainError):
     """任务不存在。"""
+
+
+class TaskReadModelNotProjectedError(DomainError):
+    """写模型存在，但查询侧读模型未完成投影或已损坏。"""

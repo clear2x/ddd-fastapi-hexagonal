@@ -10,7 +10,10 @@ from task_management.application.dto import (
     TaskView,
 )
 from task_management.application.services import DomainEventBus
-from task_management.domain.errors import TaskAssignmentNotAllowedError, TaskNotFoundError
+from task_management.domain.errors import (
+    TaskAssignmentNotAllowedError,
+    TaskNotFoundError,
+)
 from task_management.domain.models import Task
 from task_management.domain.ports import TaskQueryService, TaskRepository
 from task_management.domain.services import TaskDomainService
@@ -35,28 +38,39 @@ class CreateTaskUseCase:
 
 
 class GetTaskUseCase:
-    def __init__(self, query_service: TaskQueryService | TaskRepository) -> None:
+    """查询单任务时只依赖查询侧端口。
+
+    这里刻意不接受 TaskRepository，避免组装层把教学主路径
+    从「TaskQueryService + 读模型」悄悄退回到直接查写库。
+    这也意味着：如果写模型存在但读模型缺失，会显式暴露为查询异常状态，
+    而不是在查询用例里偷偷回退到命令侧仓储兜底。
+    """
+
+    def __init__(self, query_service: TaskQueryService) -> None:
         self.query_service = query_service
 
     def execute(self, task_id: str) -> TaskView:
         task = self.query_service.get(task_id)
         if task is None:
             raise TaskNotFoundError(f"任务不存在：{task_id}")
-        if isinstance(task, Task):
-            return TaskView.from_domain(task)
         return TaskView.from_read_model(task)
 
 
 class ListTasksUseCase:
-    def __init__(self, query_service: TaskQueryService | TaskRepository) -> None:
+    """查询列表时只依赖查询侧端口。
+
+    当前教学重点是展示“查询侧面向读模型”，
+    而不是继续复用命令侧仓储去做列表筛选。
+    这也意味着：查询可见性受投影完成度约束，
+    当前实现不把它包装成生产级一致性方案。
+    """
+
+    def __init__(self, query_service: TaskQueryService) -> None:
         self.query_service = query_service
 
     def execute(self, query: ListTasksQuery) -> List[TaskView]:
         tasks = self.query_service.list(status=query.status, assignee_id=query.assignee_id)
-        return [
-            TaskView.from_domain(task) if isinstance(task, Task) else TaskView.from_read_model(task)
-            for task in tasks
-        ]
+        return [TaskView.from_read_model(task) for task in tasks]
 
 
 class AssignTaskUseCase:
