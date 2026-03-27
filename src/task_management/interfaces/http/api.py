@@ -4,18 +4,16 @@ from fastapi import APIRouter, FastAPI, Query, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from task_management.application.dto import AssignTaskCommand, CompleteTaskCommand, CreateTaskCommand, ListTasksQuery
-from task_management.application.use_cases import (
-    AssignTaskUseCase,
-    CompleteTaskUseCase,
-    CreateTaskUseCase,
-    GetTaskUseCase,
-    ListTasksUseCase,
+from task_management.application.assemblers import (
+    assign_task_use_case,
+    complete_task_use_case,
+    create_task_use_case,
+    get_task_use_case,
+    list_tasks_use_case,
 )
+from task_management.application.dto import AssignTaskCommand, CompleteTaskCommand, CreateTaskCommand, ListTasksQuery
 from task_management.domain.errors import DomainError, TaskAlreadyCompletedError, TaskNotFoundError
 from task_management.domain.models import TaskStatus
-from task_management.infrastructure.config import settings
-from task_management.infrastructure.repository import SqlAlchemyTaskRepository, create_session_factory
 from task_management.interfaces.http.schemas import (
     ApiResponse,
     AssignTaskRequest,
@@ -26,16 +24,13 @@ from task_management.interfaces.http.schemas import (
     TaskResponse,
 )
 
-session_factory = create_session_factory(settings.database_url)
 router = APIRouter(prefix="/api/v1")
 
 
-def _repository() -> SqlAlchemyTaskRepository:
-    session = session_factory()
-    return SqlAlchemyTaskRepository(session)
-
-
 def _to_response(view) -> TaskResponse:
+    # 这里刻意做一次显式投影：
+    # application/view -> HTTP response model
+    # 教学上想强调：不要把领域对象或用例返回值直接裸露为对外 JSON。
     status_value = view.status.value if isinstance(view.status, TaskStatus) else str(view.status)
     return TaskResponse(
         id=view.id,
@@ -67,6 +62,8 @@ def _error_response(
 
 
 def _validation_error_detail(exc: RequestValidationError) -> list[dict[str, object]]:
+    # 这里统一整理框架原生校验错误，避免把 FastAPI / Pydantic 的内部结构
+    # 直接暴露给外部调用方。对教学仓库来说，这一步就是轻量 ACL 的一部分。
     details: list[dict[str, object]] = []
     for error in exc.errors():
         details.append(
@@ -110,7 +107,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
     responses={400: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
 )
 def create_task(payload: CreateTaskRequest) -> ApiResponse[TaskResponse]:
-    view = CreateTaskUseCase(_repository()).execute(CreateTaskCommand(**payload.model_dump()))
+    view = create_task_use_case().execute(CreateTaskCommand(**payload.model_dump()))
     return _success_response(_to_response(view))
 
 
@@ -120,7 +117,7 @@ def create_task(payload: CreateTaskRequest) -> ApiResponse[TaskResponse]:
     responses={404: {"model": ErrorResponse}},
 )
 def get_task(task_id: str) -> ApiResponse[TaskResponse]:
-    view = GetTaskUseCase(_repository()).execute(task_id)
+    view = get_task_use_case().execute(task_id)
     return _success_response(_to_response(view))
 
 
@@ -133,9 +130,7 @@ def list_tasks(
     status: str | None = Query(default=None),
     assignee_id: str | None = Query(default=None),
 ) -> ApiResponse[list[TaskResponse]]:
-    views = ListTasksUseCase(_repository()).execute(
-        ListTasksQuery(status=status, assignee_id=assignee_id)
-    )
+    views = list_tasks_use_case().execute(ListTasksQuery(status=status, assignee_id=assignee_id))
     return _success_response([_to_response(view) for view in views])
 
 
@@ -145,9 +140,7 @@ def list_tasks(
     responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
 )
 def assign_task(task_id: str, payload: AssignTaskRequest) -> ApiResponse[TaskResponse]:
-    view = AssignTaskUseCase(_repository()).execute(
-        AssignTaskCommand(task_id=task_id, assignee_id=payload.assignee_id)
-    )
+    view = assign_task_use_case().execute(AssignTaskCommand(task_id=task_id, assignee_id=payload.assignee_id))
     return _success_response(_to_response(view))
 
 
@@ -157,7 +150,7 @@ def assign_task(task_id: str, payload: AssignTaskRequest) -> ApiResponse[TaskRes
     responses={404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}},
 )
 def complete_task(task_id: str) -> ApiResponse[TaskResponse]:
-    view = CompleteTaskUseCase(_repository()).execute(CompleteTaskCommand(task_id=task_id))
+    view = complete_task_use_case().execute(CompleteTaskCommand(task_id=task_id))
     return _success_response(_to_response(view))
 
 

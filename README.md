@@ -27,15 +27,21 @@
 
 ```text
 src/task_management/
-  domain/                # 领域模型、领域规则、端口定义
-  application/           # 用例编排、输入输出 DTO
+  domain/                # 任务管理限界上下文的领域核心
+  application/           # 用例编排、输入输出 DTO、ACL 协议、依赖组装
   infrastructure/        # 数据库与仓储实现等基础设施
   interfaces/http/       # FastAPI 路由与请求/响应模型
+  interfaces/acl/        # 防腐层适配器示例
+
 tests/
   test_api.py            # HTTP 接口集成测试
   test_application.py    # 应用层用例测试
   test_domain.py         # 领域模型单元测试
 ```
+
+当前仓库只有一个显式 bounded context：`task_management`。
+
+这不是随手起的包名，而是教学上的边界表达：仓库当前所有 `Task` 相关语言、规则和端口，都属于“任务管理”这一套统一语义。
 
 ## API 概览
 
@@ -45,6 +51,27 @@ tests/
 - `POST /api/v1/tasks/{task_id}/assignments`
 - `POST /api/v1/tasks/{task_id}/completion`
 - `GET /health`
+
+更完整的接口边界说明见：[`docs/api.md`](docs/api.md)
+
+### 为什么这个 API 不是普通 CRUD
+
+这个仓库虽然只暴露了几个很小的任务接口，但设计重点不是“把表做成 REST”。
+
+它刻意演示下面几层翻译边界：
+
+- **HTTP 请求模型**：只负责对外契约、字段校验、空值归一化
+- **应用层命令 / 查询**：表达用例，而不是绑定某个 Web 框架
+- **领域模型**：维护标题、描述、指派、完成等业务规则
+- **HTTP 响应模型**：把内部结果投影成稳定的外部 JSON 结构
+
+从 DDD 视角看，`interfaces/http` 可以理解成一个面向调用方的轻量 **ACL（Anti-Corruption Layer，防腐层）**：
+
+- 它吸收 HTTP / JSON / 校验错误这些外部协议细节
+- 它不让 FastAPI 或 Pydantic 的模型直接污染领域层
+- 它也不让领域对象直接裸露为外部契约
+
+因此读这个项目时，建议重点看“边界如何翻译”，而不是只看接口路径。
 
 ### HTTP 返回契约
 
@@ -70,10 +97,10 @@ tests/
 
 常见状态码语义：
 
-- `422`：请求体缺字段、类型不匹配、字符串全空白等输入校验失败
-- `404`：任务不存在
-- `409`：任务已完成，不能重复完成
-- `400`：进入领域层后触发业务规则错误
+- `422`：请求体缺字段、类型不匹配、字符串全空白等输入校验失败。表示外部契约尚未成立，请求还没有以合法命令进入应用层
+- `404`：任务不存在。表示资源定位失败，而不是格式错误
+- `409`：任务已完成，不能重复完成。表示请求合法，但资源当前状态与动作冲突
+- `400`：进入领域层后触发业务规则错误。表示“格式合法”不等于“业务合法”
 
 ### description 空值归一化策略
 
@@ -85,6 +112,12 @@ tests/
 - 传入非空字符串：会 `trim` 后保存
 
 这样做的目的是把“没有描述”和“空白描述”收敛成同一种语义，避免把无意义空字符串写入领域对象或持久化层。
+
+这正是接口边界层的职责之一：
+
+- 对外部输入保持适度宽容
+- 对内部领域保持语义严格
+- 在边界完成一次明确的模型翻译
 
 ## 本地开发
 
@@ -180,12 +213,32 @@ python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-unde
 ## 为什么这算六边形架构
 
 - **Domain**：放业务模型与业务规则
-- **Application**：组织用例与流程编排
+- **Application**：组织用例、定义跨边界协作语义
 - **Infrastructure**：实现端口，例如 SQLAlchemy 仓储
-- **Interfaces**：通过 FastAPI 对外暴露能力
+- **Interfaces**：通过 FastAPI 或 ACL 适配器对接外部世界
 
 核心思想是：
 
 > 业务规则应尽量独立于 Web 框架、数据库与外部交互细节。
 
 这样测试会更清晰，替换适配器也更容易。
+
+## 为什么这里还强调 bounded context 与 ACL
+
+很多示例项目虽然叫 DDD，但只展示了“分层”，没有把“上下文边界”讲清楚。
+
+这个仓库现在额外明确了两件事：
+
+1. `task_management` 是一个**任务管理限界上下文**
+2. 当外部系统想把“任务”同步进来时，需要先经过 **ACL（防腐层）** 翻译，再进入本上下文语义
+
+这能帮助读者区分两种常见但不同的适配：
+
+- **HTTP 适配**：解决“请求怎么进来”
+- **ACL 适配**：解决“外部语义如何翻译后再进来”
+
+进一步说明见：
+
+- `docs/architecture.md`
+- `docs/project-structure.md`
+- `docs/bounded-context-and-acl.md`
