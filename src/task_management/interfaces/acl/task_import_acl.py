@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """任务导入场景的 ACL 适配器示例。
 
 注意：

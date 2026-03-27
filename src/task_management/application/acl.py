@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """任务管理限界上下文的防腐层（ACL）端口定义。
 
 这个文件故意保持轻量，目的是把 DDD 教学中的 ACL 概念正式落进仓库：
