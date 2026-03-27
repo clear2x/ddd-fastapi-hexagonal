@@ -19,6 +19,7 @@ from task_management.domain.errors import (
     TaskAlreadyCompletedError,
     TaskAssignmentNotAllowedError,
     TaskNotFoundError,
+    TaskReadModelNotProjectedError,
 )
 from task_management.domain.models import TaskStatus
 from task_management.interfaces.http.schemas import (
@@ -93,6 +94,9 @@ def _register_exception_handlers(app: FastAPI) -> None:
     async def handle_assignment_not_allowed(_: Request, exc: TaskAssignmentNotAllowedError) -> JSONResponse:
         return _error_response(status_code=409, code="TASK_ASSIGNMENT_NOT_ALLOWED", message=str(exc))
 
+    async def handle_task_read_model_not_projected(_: Request, exc: TaskReadModelNotProjectedError) -> JSONResponse:
+        return _error_response(status_code=409, code="TASK_READ_MODEL_NOT_PROJECTED", message=str(exc))
+
     async def handle_domain_error(_: Request, exc: DomainError) -> JSONResponse:
         return _error_response(status_code=400, code="DOMAIN_ERROR", message=str(exc))
 
@@ -107,6 +111,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(TaskNotFoundError, handle_task_not_found)
     app.add_exception_handler(TaskAlreadyCompletedError, handle_task_completed)
     app.add_exception_handler(TaskAssignmentNotAllowedError, handle_assignment_not_allowed)
+    app.add_exception_handler(TaskReadModelNotProjectedError, handle_task_read_model_not_projected)
     app.add_exception_handler(DomainError, handle_domain_error)
     app.add_exception_handler(RequestValidationError, handle_validation_error)
 

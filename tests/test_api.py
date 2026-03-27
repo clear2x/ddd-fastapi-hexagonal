@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+from task_management.application import assemblers
+from task_management.infrastructure.repository import TaskReadModelModel
 from task_management.interfaces.http.api import create_app
 
 
@@ -154,3 +156,48 @@ def test_completion_conflict_expresses_state_conflict_not_validation_failure() -
         "message": "任务已完成，不能重复完成。",
         "details": [],
     }
+
+
+def test_assign_task_returns_projection_specific_error_when_read_model_is_missing() -> None:
+    broken_client = TestClient(create_app())
+    original_event_bus = assemblers._event_bus
+
+    def create_only_event_bus():
+        bus = original_event_bus()
+        original_publish = bus.publish
+
+        def publish_once(events):
+            original_publish(events)
+            task_id = next(event.task_id for event in events if hasattr(event, "task_id"))
+            session = assemblers.session_factory()
+            try:
+                model = session.get(TaskReadModelModel, task_id)
+                assert model is not None
+                session.delete(model)
+                session.commit()
+            finally:
+                session.close()
+
+            bus.publish = original_publish
+
+        bus.publish = publish_once
+        return bus
+
+    assemblers._event_bus = create_only_event_bus
+    try:
+        create_response = broken_client.post("/api/v1/tasks", json={"title": "Projection gap"})
+        task_id = create_response.json()["data"]["id"]
+
+        response = broken_client.post(
+            f"/api/v1/tasks/{task_id}/assignments",
+            json={"assignee_id": "user_001"},
+        )
+    finally:
+        assemblers._event_bus = original_event_bus
+
+    assert create_response.status_code == 201
+    assert response.status_code == 409
+    body = response.json()
+    assert body["error"]["code"] == "TASK_READ_MODEL_NOT_PROJECTED"
+    assert task_id in body["error"]["message"]
+    assert body["error"]["details"] == []
