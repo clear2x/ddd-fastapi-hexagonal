@@ -129,6 +129,20 @@ ruff check .
 python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80
 ```
 
+## CI 的质量守护意图
+
+当前仓库在 CI 中只守两道最核心的门：
+
+- `ruff check .`
+- `python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80`
+
+这样做的目的不是把教学型仓库变成规则怪兽，而是保证下面这几件事始终成立：
+
+- 文档里写的命令是真实存在的
+- Makefile 里的入口与 CI 实际执行口径一致
+- 测试不仅能跑，还能覆盖核心主路径
+- 质量守护规则不会在文档、脚本、workflow 之间悄悄漂移
+
 ## 测试策略
 
 本项目把测试分为三层：
