@@ -28,21 +28,15 @@
 
 ```text
 src/task_management/
-  domain/                # 任务管理限界上下文的领域核心、领域事件、领域服务
-  application/           # 用例编排、输入输出 DTO、读模型查询、事件投影
-  infrastructure/        # 数据库、仓储、事件总线与查询实现
+  domain/                # 领域模型、领域规则、端口定义
+  application/           # 用例编排、输入输出 DTO
+  infrastructure/        # 数据库与仓储实现等基础设施
   interfaces/http/       # FastAPI 路由与请求/响应模型
-  interfaces/acl/        # 防腐层适配器示例
-
 tests/
   test_api.py            # HTTP 接口集成测试
-  test_application.py    # 应用层用例与读模型投影测试
-  test_domain.py         # 领域模型、领域事件、领域服务单元测试
+  test_application.py    # 应用层用例测试
+  test_domain.py         # 领域模型单元测试
 ```
-
-当前仓库只有一个显式 bounded context：`task_management`。
-
-这不是随手起的包名，而是教学上的边界表达：仓库当前所有 `Task` 相关语言、规则和端口，都属于“任务管理”这一套统一语义。
 
 ## API 概览
 
@@ -214,9 +208,9 @@ python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-unde
 ## 为什么这算六边形架构
 
 - **Domain**：放业务模型与业务规则
-- **Application**：组织用例、定义跨边界协作语义
+- **Application**：组织用例与流程编排
 - **Infrastructure**：实现端口，例如 SQLAlchemy 仓储
-- **Interfaces**：通过 FastAPI 或 ACL 适配器对接外部世界
+- **Interfaces**：通过 FastAPI 对外暴露能力
 
 核心思想是：
 
