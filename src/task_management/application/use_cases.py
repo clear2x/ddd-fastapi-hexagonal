@@ -35,28 +35,35 @@ class CreateTaskUseCase:
 
 
 class GetTaskUseCase:
-    def __init__(self, query_service: TaskQueryService | TaskRepository) -> None:
+    """查询单任务时只依赖查询侧端口。
+
+    这里刻意不接受 TaskRepository，避免组装层把教学主路径
+    从「TaskQueryService + 读模型」悄悄退回到直接查写库。
+    """
+
+    def __init__(self, query_service: TaskQueryService) -> None:
         self.query_service = query_service
 
     def execute(self, task_id: str) -> TaskView:
         task = self.query_service.get(task_id)
         if task is None:
             raise TaskNotFoundError(f"任务不存在：{task_id}")
-        if isinstance(task, Task):
-            return TaskView.from_domain(task)
         return TaskView.from_read_model(task)
 
 
 class ListTasksUseCase:
-    def __init__(self, query_service: TaskQueryService | TaskRepository) -> None:
+    """查询列表时只依赖查询侧端口。
+
+    教学语义上，这里应展示 CQRS 风格的读模型读取，
+    而不是回退为直接遍历命令侧聚合仓储。
+    """
+
+    def __init__(self, query_service: TaskQueryService) -> None:
         self.query_service = query_service
 
     def execute(self, query: ListTasksQuery) -> List[TaskView]:
         tasks = self.query_service.list(status=query.status, assignee_id=query.assignee_id)
-        return [
-            TaskView.from_domain(task) if isinstance(task, Task) else TaskView.from_read_model(task)
-            for task in tasks
-        ]
+        return [TaskView.from_read_model(task) for task in tasks]
 
 
 class AssignTaskUseCase:
