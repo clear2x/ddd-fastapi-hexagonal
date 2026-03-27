@@ -111,8 +111,9 @@ uvicorn task_management.main:app --reload
 
 ```bash
 python -m pytest
-python -m pytest --cov=task_management --cov-report=term-missing
+python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80
 ruff check .
+make quality
 ```
 
 ## 测试策略
@@ -148,6 +149,15 @@ ruff check .
 - 新增功能时，至少补充对应层级测试之一
 - 修复缺陷时，优先补一个可复现该问题的测试
 - 不把复杂业务逻辑直接塞进 FastAPI 路由
+
+### CI 的质量守护意图
+
+CI 中的 `quality` 任务不是为了制造形式化失败，而是为了保证仓库里最容易漂移的几处内容保持一致：
+
+- README 中写出来的测试命令，应该与实际工作流一致
+- 覆盖率门槛要明确写出，当前基线为 `--cov-fail-under=80`
+- `ruff check .` 作为统一静态检查入口，文档、本地命令和 CI 要保持同一写法
+- 如果后续调整命令、路径或阈值，应同步更新 README、Makefile、CI 工作流和 `tests/test_quality.py`
 
 ## 为什么这算六边形架构
 
