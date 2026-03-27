@@ -111,7 +111,7 @@ uvicorn task_management.main:app --reload
 
 ```bash
 python -m pytest
-python -m pytest --cov=task_management --cov-report=term-missing
+python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80
 ruff check .
 ```
 
@@ -148,6 +148,15 @@ ruff check .
 - 新增功能时，至少补充对应层级测试之一
 - 修复缺陷时，优先补一个可复现该问题的测试
 - 不把复杂业务逻辑直接塞进 FastAPI 路由
+
+## CI 的质量守护意图
+
+当前仓库的 CI 只保留最基础、最容易理解的两道门：
+
+- `ruff check .`：保证基础静态检查不过线时能立即失败
+- `python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80`：保证核心示例代码至少维持基本覆盖率下限
+
+这里故意不引入过多复杂规则，目的是让教学仓库的质量门槛清晰、稳定、容易理解，而不是把示例项目变成规则试验场。
 
 ## 为什么这算六边形架构
 

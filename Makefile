@@ -7,7 +7,7 @@ run:
 	uvicorn task_management.main:app --reload
 
 test:
-	pytest
+	$(PYTHON) -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80
 
 lint:
-	ruff check src tests
+	ruff check .
