@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, FastAPI, Query, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -32,7 +34,7 @@ from task_management.interfaces.http.schemas import (
 router = APIRouter(prefix="/api/v1")
 
 
-def _to_response(view) -> TaskResponse:
+def _to_response(view: Any) -> TaskResponse:
     # 这里刻意做一次显式投影：
     # application/view -> HTTP response model
     # 教学上想强调：不要把领域对象或用例返回值直接裸露为对外 JSON。
@@ -49,7 +51,7 @@ def _to_response(view) -> TaskResponse:
     )
 
 
-def _success_response(data):
+def _success_response(data: Any) -> ApiResponse[Any]:
     return ApiResponse(data=data)
 
 

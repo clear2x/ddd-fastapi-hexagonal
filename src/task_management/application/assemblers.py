@@ -50,20 +50,16 @@ def create_task_use_case() -> CreateTaskUseCase:
     return CreateTaskUseCase(_repository(), _event_bus())
 
 
-
 def get_task_use_case() -> GetTaskUseCase:
     return GetTaskUseCase(_query_service())
-
 
 
 def list_tasks_use_case() -> ListTasksUseCase:
     return ListTasksUseCase(_query_service())
 
 
-
 def assign_task_use_case() -> AssignTaskUseCase:
     return AssignTaskUseCase(_repository(), event_bus=_event_bus())
-
 
 
 def complete_task_use_case() -> CompleteTaskUseCase:

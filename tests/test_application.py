@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from task_management.application.dto import AssignTaskCommand, CreateTaskCommand, ListTasksQuery
 from task_management.application.event_handlers import TaskReadModelProjector
 from task_management.application.read_models import TaskReadModel
@@ -14,10 +16,10 @@ class InMemoryTaskRepository(TaskRepository):
     def add(self, task: Task) -> None:
         self.items[task.id.value] = task
 
-    def get(self, task_id: str):
+    def get(self, task_id: str) -> Task | None:
         return self.items.get(task_id)
 
-    def list(self, status: str | None = None, assignee_id: str | None = None):
+    def list(self, status: str | None = None, assignee_id: str | None = None) -> list[Task]:
         tasks = list(self.items.values())
         if status is not None:
             tasks = [task for task in tasks if task.status.value == status]
@@ -33,7 +35,14 @@ class InMemoryTaskReadModelStore(TaskReadModelStore, TaskQueryService):
     def __init__(self) -> None:
         self.items: dict[str, TaskReadModel] = {}
 
-    def create_task(self, *, task_id: str, title: str, description: str | None, occurred_at) -> None:
+    def create_task(
+        self,
+        *,
+        task_id: str,
+        title: str,
+        description: str | None,
+        occurred_at: datetime,
+    ) -> None:
         self.items[task_id] = TaskReadModel(
             id=task_id,
             title=title,
@@ -45,7 +54,7 @@ class InMemoryTaskReadModelStore(TaskReadModelStore, TaskQueryService):
             completed_at=None,
         )
 
-    def assign_task(self, *, task_id: str, assignee_id: str, occurred_at) -> None:
+    def assign_task(self, *, task_id: str, assignee_id: str, occurred_at: datetime) -> None:
         item = self.items[task_id]
         self.items[task_id] = TaskReadModel(
             id=item.id,
@@ -58,7 +67,13 @@ class InMemoryTaskReadModelStore(TaskReadModelStore, TaskQueryService):
             completed_at=item.completed_at,
         )
 
-    def complete_task(self, *, task_id: str, completed_at, occurred_at) -> None:
+    def complete_task(
+        self,
+        *,
+        task_id: str,
+        completed_at: datetime,
+        occurred_at: datetime,
+    ) -> None:
         item = self.items[task_id]
         self.items[task_id] = TaskReadModel(
             id=item.id,
@@ -71,10 +86,15 @@ class InMemoryTaskReadModelStore(TaskReadModelStore, TaskQueryService):
             completed_at=completed_at,
         )
 
-    def get(self, task_id: str):
+    def get(self, task_id: str) -> TaskReadModel | None:
         return self.items.get(task_id)
 
-    def list(self, *, status: str | None = None, assignee_id: str | None = None):
+    def list(
+        self,
+        *,
+        status: str | None = None,
+        assignee_id: str | None = None,
+    ) -> list[TaskReadModel]:
         tasks = list(self.items.values())
         if status is not None:
             tasks = [task for task in tasks if task.status.value == status]
