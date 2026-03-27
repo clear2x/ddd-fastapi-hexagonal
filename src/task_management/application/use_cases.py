@@ -58,6 +58,10 @@ class ListTasksUseCase:
 
     教学语义上，这里应展示 CQRS 风格的读模型读取，
     而不是回退为直接遍历命令侧聚合仓储。
+
+    这里之所以固定走读模型，是为了把“查询侧面向展示/筛选投影”
+    这件事讲清楚；代价是查询结果受投影完成度约束，当前实现也不
+    试图用 outbox、重放或补偿把它包装成生产级一致性方案。
     """
 
     def __init__(self, query_service: TaskQueryService) -> None:

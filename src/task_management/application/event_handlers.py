@@ -5,7 +5,16 @@ from task_management.domain.ports import TaskReadModelStore
 
 
 class TaskReadModelProjector:
-    """把领域事件投影到查询读模型。"""
+    """把领域事件投影到查询读模型。
+
+    这是第二块里的教学型 projector：
+    - 同步执行
+    - 单进程内调用
+    - 直接更新读模型表
+
+    它的职责只是把“领域事实 -> 查询投影”讲清楚，
+    不承担 outbox、异步消费、失败重放等生产级消息能力。
+    """
 
     def __init__(self, store: TaskReadModelStore) -> None:
         self.store = store
