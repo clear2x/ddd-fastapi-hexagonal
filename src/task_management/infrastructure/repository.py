@@ -8,6 +8,7 @@ from sqlalchemy import DateTime, String, Text, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
 from task_management.application.read_models import TaskReadModel
+from task_management.domain.errors import TaskReadModelNotProjectedError
 from task_management.domain.models import AssigneeId, Task, TaskDescription, TaskId, TaskStatus, TaskTitle
 from task_management.domain.ports import TaskQueryService, TaskReadModelStore, TaskRepository
 
@@ -107,7 +108,12 @@ class SqlAlchemyTaskRepository(TaskRepository):
 
 
 class SqlAlchemyTaskReadModelStore(TaskReadModelStore):
-    """把领域事件投影到独立读模型表。"""
+    """把领域事件投影到独立读模型表。
+
+    这是教学版 CQRS：同步、单进程、直接写读模型表。
+    如果写模型已成功推进，但这里找不到对应读模型，就视为可探测坏状态，
+    必须显式失败，而不是静默吞掉；但它仍不是生产级 outbox / 重试 / 事务一致性方案。
+    """
 
     def __init__(self, session: Session) -> None:
         self.session = session
@@ -135,9 +141,7 @@ class SqlAlchemyTaskReadModelStore(TaskReadModelStore):
         self.session.commit()
 
     def assign_task(self, *, task_id: str, assignee_id: str, occurred_at: datetime) -> None:
-        model = self.session.get(TaskReadModelModel, task_id)
-        if model is None:
-            return
+        model = self._get_required_model(task_id)
         model.assignee_id = assignee_id
         model.status = TaskStatus.ASSIGNED.value
         model.updated_at = occurred_at
@@ -150,13 +154,19 @@ class SqlAlchemyTaskReadModelStore(TaskReadModelStore):
         completed_at: datetime,
         occurred_at: datetime,
     ) -> None:
-        model = self.session.get(TaskReadModelModel, task_id)
-        if model is None:
-            return
+        model = self._get_required_model(task_id)
         model.status = TaskStatus.COMPLETED.value
         model.completed_at = completed_at
         model.updated_at = occurred_at
         self.session.commit()
+
+    def _get_required_model(self, task_id: str) -> TaskReadModelModel:
+        model = self.session.get(TaskReadModelModel, task_id)
+        if model is None:
+            raise TaskReadModelNotProjectedError(
+                f"读模型缺失：task_id={task_id}。写模型可能已存在，但查询侧投影未完成或已损坏。"
+            )
+        return model
 
 
 class SqlAlchemyTaskQueryService(TaskQueryService):

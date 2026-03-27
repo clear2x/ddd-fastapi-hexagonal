@@ -39,6 +39,8 @@ class GetTaskUseCase:
 
     这里刻意不接受 TaskRepository，避免组装层把教学主路径
     从「TaskQueryService + 读模型」悄悄退回到直接查写库。
+    这也意味着：如果写模型存在但读模型缺失，会显式暴露为查询异常状态，
+    而不是在查询用例里偷偷回退到命令侧仓储兜底。
     """
 
     def __init__(self, query_service: TaskQueryService) -> None:

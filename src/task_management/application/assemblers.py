@@ -9,7 +9,8 @@
 - 查询侧 use case 只经由 TaskQueryService 读取读模型，不直接查写库
 - projector 使用自己的 session，把“事件投影”和“HTTP 请求中的命令处理”边界分开
 
-这里仍是教学型、同步内存内事件总线示例；不扩展成完整 Unit of Work。
+这里仍是教学型、同步内存内事件总线示例；不扩展成完整 Unit of Work，
+也不是事务 outbox 或跨进程消息投递方案。
 """
 
 from task_management.application.event_handlers import TaskReadModelProjector
