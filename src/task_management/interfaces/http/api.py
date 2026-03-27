@@ -12,7 +12,12 @@ from task_management.application.assemblers import (
     list_tasks_use_case,
 )
 from task_management.application.dto import AssignTaskCommand, CompleteTaskCommand, CreateTaskCommand, ListTasksQuery
-from task_management.domain.errors import DomainError, TaskAlreadyCompletedError, TaskNotFoundError
+from task_management.domain.errors import (
+    DomainError,
+    TaskAlreadyCompletedError,
+    TaskAssignmentNotAllowedError,
+    TaskNotFoundError,
+)
 from task_management.domain.models import TaskStatus
 from task_management.interfaces.http.schemas import (
     ApiResponse,
@@ -83,6 +88,9 @@ def _register_exception_handlers(app: FastAPI) -> None:
     async def handle_task_completed(_: Request, exc: TaskAlreadyCompletedError) -> JSONResponse:
         return _error_response(status_code=409, code="TASK_ALREADY_COMPLETED", message=str(exc))
 
+    async def handle_assignment_not_allowed(_: Request, exc: TaskAssignmentNotAllowedError) -> JSONResponse:
+        return _error_response(status_code=409, code="TASK_ASSIGNMENT_NOT_ALLOWED", message=str(exc))
+
     async def handle_domain_error(_: Request, exc: DomainError) -> JSONResponse:
         return _error_response(status_code=400, code="DOMAIN_ERROR", message=str(exc))
 
@@ -96,6 +104,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
 
     app.add_exception_handler(TaskNotFoundError, handle_task_not_found)
     app.add_exception_handler(TaskAlreadyCompletedError, handle_task_completed)
+    app.add_exception_handler(TaskAssignmentNotAllowedError, handle_assignment_not_allowed)
     app.add_exception_handler(DomainError, handle_domain_error)
     app.add_exception_handler(RequestValidationError, handle_validation_error)
 
@@ -137,7 +146,7 @@ def list_tasks(
 @router.post(
     "/tasks/{task_id}/assignments",
     response_model=ApiResponse[TaskResponse],
-    responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
+    responses={400: {"model": ErrorResponse}, 404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}, 422: {"model": ErrorResponse}},
 )
 def assign_task(task_id: str, payload: AssignTaskRequest) -> ApiResponse[TaskResponse]:
     view = assign_task_use_case().execute(AssignTaskCommand(task_id=task_id, assignee_id=payload.assignee_id))

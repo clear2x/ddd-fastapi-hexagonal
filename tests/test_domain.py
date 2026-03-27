@@ -5,8 +5,10 @@ from task_management.domain.errors import (
     InvalidTaskDescriptionError,
     InvalidTaskTitleError,
     TaskAlreadyCompletedError,
+    TaskAssignmentNotAllowedError,
 )
 from task_management.domain.models import Task, TaskStatus
+from task_management.domain.services import TaskDomainService
 
 
 def test_create_task_success() -> None:
@@ -38,3 +40,22 @@ def test_complete_task_twice_fails() -> None:
     task.complete()
     with pytest.raises(TaskAlreadyCompletedError):
         task.complete()
+
+
+def test_create_task_records_domain_event() -> None:
+    task = Task.create(title="Track event")
+
+    events = task.pull_domain_events()
+
+    assert len(events) == 1
+    assert events[0].event_type == "task.created"
+    assert events[0].task_id == task.id.value
+
+
+def test_completed_task_cannot_be_assigned_again() -> None:
+    task = Task.create(title="Guard completed task")
+    task.complete()
+
+    with pytest.raises(TaskAssignmentNotAllowedError):
+        if not TaskDomainService().can_assign(task):
+            raise TaskAssignmentNotAllowedError("已完成任务不能再次指派。")

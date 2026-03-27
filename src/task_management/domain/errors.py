@@ -21,5 +21,9 @@ class TaskAlreadyCompletedError(DomainError):
     """任务已完成，不允许重复完成。"""
 
 
+class TaskAssignmentNotAllowedError(DomainError):
+    """任务当前状态不允许再被指派。"""
+
+
 class TaskNotFoundError(DomainError):
     """任务不存在。"""

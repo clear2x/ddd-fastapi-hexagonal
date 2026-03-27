@@ -7,8 +7,9 @@ from typing import Optional
 from sqlalchemy import DateTime, String, Text, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
+from task_management.application.read_models import TaskReadModel
 from task_management.domain.models import AssigneeId, Task, TaskDescription, TaskId, TaskStatus, TaskTitle
-from task_management.domain.ports import TaskRepository
+from task_management.domain.ports import TaskQueryService, TaskReadModelStore, TaskRepository
 
 
 class Base(DeclarativeBase):
@@ -17,6 +18,19 @@ class Base(DeclarativeBase):
 
 class TaskModel(Base):
     __tablename__ = "tasks"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    assignee_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class TaskReadModelModel(Base):
+    __tablename__ = "task_read_models"
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -89,6 +103,94 @@ class SqlAlchemyTaskRepository(TaskRepository):
             created_at=task.created_at,
             updated_at=task.updated_at,
             completed_at=task.completed_at,
+        )
+
+
+class SqlAlchemyTaskReadModelStore(TaskReadModelStore):
+    """把领域事件投影到独立读模型表。"""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def create_task(
+        self,
+        *,
+        task_id: str,
+        title: str,
+        description: str | None,
+        occurred_at: datetime,
+    ) -> None:
+        self.session.merge(
+            TaskReadModelModel(
+                id=task_id,
+                title=title,
+                description=description,
+                assignee_id=None,
+                status=TaskStatus.PENDING.value,
+                created_at=occurred_at,
+                updated_at=occurred_at,
+                completed_at=None,
+            )
+        )
+        self.session.commit()
+
+    def assign_task(self, *, task_id: str, assignee_id: str, occurred_at: datetime) -> None:
+        model = self.session.get(TaskReadModelModel, task_id)
+        if model is None:
+            return
+        model.assignee_id = assignee_id
+        model.status = TaskStatus.ASSIGNED.value
+        model.updated_at = occurred_at
+        self.session.commit()
+
+    def complete_task(
+        self,
+        *,
+        task_id: str,
+        completed_at: datetime,
+        occurred_at: datetime,
+    ) -> None:
+        model = self.session.get(TaskReadModelModel, task_id)
+        if model is None:
+            return
+        model.status = TaskStatus.COMPLETED.value
+        model.completed_at = completed_at
+        model.updated_at = occurred_at
+        self.session.commit()
+
+
+class SqlAlchemyTaskQueryService(TaskQueryService):
+    """从查询表读取任务列表，体现命令侧与查询侧分离。"""
+
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def get(self, task_id: str) -> Optional[TaskReadModel]:
+        model = self.session.get(TaskReadModelModel, task_id)
+        if model is None:
+            return None
+        return self._to_read_model(model)
+
+    def list(self, *, status: str | None = None, assignee_id: str | None = None) -> Iterable[TaskReadModel]:
+        stmt = select(TaskReadModelModel)
+        if status:
+            stmt = stmt.where(TaskReadModelModel.status == status)
+        if assignee_id:
+            stmt = stmt.where(TaskReadModelModel.assignee_id == assignee_id)
+        stmt = stmt.order_by(TaskReadModelModel.created_at.desc())
+        return [self._to_read_model(row) for row in self.session.scalars(stmt).all()]
+
+    @staticmethod
+    def _to_read_model(model: TaskReadModelModel) -> TaskReadModel:
+        return TaskReadModel(
+            id=model.id,
+            title=model.title,
+            description=model.description,
+            assignee_id=model.assignee_id,
+            status=TaskStatus(model.status),
+            created_at=model.created_at,
+            updated_at=model.updated_at,
+            completed_at=model.completed_at,
         )
 
 
