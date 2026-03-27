@@ -18,6 +18,17 @@
 
 ## 提交 PR 前
 
+建议先跑通最小检查，再执行完整 CI 对齐命令：
+
+```bash
+make check
+make ci
+```
+
+说明：
+- `make check` 适合本地快速确认基础静态检查与测试是否可通过
+- `make ci` 会按顺序执行 `ruff check .` 与 `python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80`
+
 - 跑测试
 - 检查 API 示例是否仍然正确
 - 检查架构边界是否仍然清晰

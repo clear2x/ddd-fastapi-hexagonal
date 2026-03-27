@@ -109,10 +109,24 @@ uvicorn task_management.main:app --reload
 
 ### 4. 运行测试与质量检查
 
+先跑通最小检查：
+
+```bash
+make check
+```
+
+完整本地质量检查：
+
+```bash
+make ci
+```
+
+如果你更习惯直接调用命令，对应关系如下：
+
 ```bash
 python -m pytest
-python -m pytest --cov=task_management --cov-report=term-missing
 ruff check .
+python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80
 ```
 
 ## 测试策略
