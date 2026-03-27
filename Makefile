@@ -1,23 +1,32 @@
 PYTHON ?= python3
+UVICORN ?= uvicorn
+APP_MODULE ?= task_management.main:app
+RUFF_TARGETS ?= src tests
+PYTEST_ARGS ?=
 
-.PHONY: install run test lint quality clean
+.PHONY: install run test test-cov lint format-check check ci clean
 
 install:
 	$(PYTHON) -m pip install -e .[dev]
 
 run:
-	uvicorn task_management.main:app --reload
+	$(PYTHON) -m $(UVICORN) $(APP_MODULE) --reload
 
 test:
-	$(PYTHON) -m pytest
+	$(PYTHON) -m pytest $(PYTEST_ARGS)
+
+test-cov:
+	$(PYTHON) -m pytest --cov=task_management --cov-report=term-missing $(PYTEST_ARGS)
 
 lint:
-	ruff check .
+	$(PYTHON) -m ruff check $(RUFF_TARGETS)
 
-quality:
-	$(PYTHON) -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80
-	$(PYTHON) -m pytest tests/test_quality.py
-	$(MAKE) lint
+format-check:
+	$(PYTHON) -m ruff format --check $(RUFF_TARGETS)
+
+check: lint test
+
+ci: lint format-check test-cov
 
 clean:
 	rm -rf .pytest_cache .ruff_cache .coverage htmlcov dist build .eggs

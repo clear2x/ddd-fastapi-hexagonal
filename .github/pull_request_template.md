@@ -1,18 +1,22 @@
 ## 变更说明
 
 - 说明本次改动解决了什么问题
-- 标注主要涉及的分层：domain / application / infrastructure / interfaces
+- 标注主要涉及的分层：domain / application / infrastructure / interfaces / docs / ci
 
 ## 验证方式
 
-- [ ] 已运行 `ruff check .`
-- [ ] 已运行 `python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80`
+请按改动范围勾选，不要求机械性全部勾满：
+
+- [ ] 已运行 `make check`
+- [ ] 如改动涉及 CI / 文档 / 工程约束，已运行 `make ci`
+- [ ] 已人工验证相关文档或示例命令仍然可用
 
 ## 影响评估
 
 - 是否影响现有 API：
 - 是否影响领域规则：
 - 是否需要补充文档：
+- 是否调整了质量守护规则：
 
 ## 其他说明
 

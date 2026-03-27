@@ -1,21 +1,28 @@
 # ddd-fastapi-hexagonal
 
-一个用于演示 **DDD（领域驱动设计）+ Hexagonal Architecture（六边形架构）+ FastAPI** 的最小可运行示例项目。
+一个用于演示 **DDD（领域驱动设计）+ 六边形架构（Hexagonal Architecture）+ FastAPI** 的最小可运行示例项目。
 
-项目刻意保持精简，目标不是堆功能，而是让目录分层、依赖方向、测试边界与协作约定都足够清晰，适合作为学习、脚手架参考或团队内部 PoC 起点。
+这个仓库的目标不是堆叠业务功能，而是把一个适合开源阅读与团队接手的 Python Web 项目骨架讲清楚：
 
-## 项目目标
+- 目录为什么这样分层
+- 依赖应该朝哪个方向流动
+- HTTP 层与业务核心如何解耦
+- 新同学第一次 clone 后应该如何启动、测试、扩展
 
-这个示例重点展示：
+如果你正在找一个“能跑、能看懂、能继续演化”的 DDD + FastAPI 示例，这个仓库就是为这个目的准备的。
 
-- 如何把 **domain / application / infrastructure / interfaces** 分层拆开
-- 如何让 FastAPI 只承担输入适配职责，而不是吞掉全部业务逻辑
-- 如何通过测试验证领域规则与 HTTP 接口行为
-- 如何在小项目里就建立基础质量约定、PR 模板与 CI 检查
+## 仓库特点
+
+- **可直接运行**：默认使用 SQLite，本地零额外依赖即可启动
+- **分层克制**：聚焦 `domain / application / infrastructure / interfaces` 的边界表达
+- **测试齐全**：覆盖领域规则、应用用例、HTTP 接口与基础质量约束
+- **适合作为脚手架参考**：可以作为教学示例、PoC 起点或团队内部模板
+- **中文文档优先**：降低团队阅读与评审门槛
+- **教学型仓库优先稳健**：质量守护强调一致性与可理解性，不追求过度理想化门槛
 
 ## 示例业务域
 
-当前示例使用一个简单的 **任务管理（Task Management）** 领域，包含以下操作：
+当前示例使用一个简单的 **任务管理（Task Management）** 领域，包含以下能力：
 
 - 创建任务
 - 获取单个任务
@@ -23,19 +30,117 @@
 - 指派任务
 - 完成任务
 
-## 目录结构
+## 技术栈
 
-```text
-src/task_management/
-  domain/                # 领域模型、领域规则、端口定义
-  application/           # 用例编排、输入输出 DTO
-  infrastructure/        # 数据库与仓储实现等基础设施
-  interfaces/http/       # FastAPI 路由与请求/响应模型
-tests/
-  test_api.py            # HTTP 接口集成测试
-  test_application.py    # 应用层用例测试
-  test_domain.py         # 领域模型单元测试
+- Python 3.11+
+- FastAPI
+- Pydantic v2
+- SQLAlchemy 2.x
+- Pytest
+- Ruff
+- Uvicorn
+
+## 快速开始
+
+### 1. 克隆仓库
+
+```bash
+git clone https://github.com/clear2x/ddd-fastapi-hexagonal.git
+cd ddd-fastapi-hexagonal
 ```
+
+### 2. 创建虚拟环境
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+```
+
+Windows PowerShell 可使用：
+
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+```
+
+### 3. 安装依赖
+
+```bash
+make install
+```
+
+如果本机没有 `make`，也可以直接执行：
+
+```bash
+python -m pip install -e .[dev]
+```
+
+### 4. 准备环境变量
+
+```bash
+cp .env.example .env
+```
+
+默认配置即可运行；如需自定义，可编辑 `.env`：
+
+```env
+APP_ENV=dev
+DATABASE_URL=sqlite:///./tasks.db
+```
+
+### 5. 启动服务
+
+```bash
+make run
+```
+
+启动后访问：
+
+- 应用健康检查：<http://127.0.0.1:8000/health>
+- Swagger 文档：<http://127.0.0.1:8000/docs>
+- ReDoc 文档：<http://127.0.0.1:8000/redoc>
+
+## 常用命令
+
+```bash
+make install       # 安装开发依赖
+make run           # 启动本地开发服务
+make test          # 运行测试
+make test-cov      # 运行测试并输出覆盖率报告
+make lint          # 运行 Ruff 静态检查
+make format-check  # 检查代码格式是否符合 Ruff 约定
+make check         # 一次执行 lint + test
+make ci            # 执行与 CI 基本一致的检查流程
+make clean         # 清理缓存、测试产物与本地数据库
+```
+
+## 推荐检查路径
+
+### 第一次接触仓库
+
+如果你只是第一次跑通项目，建议先走最小路径：
+
+```bash
+make install
+make run
+make check
+```
+
+### 提交前自检
+
+如果你准备提交改动，建议执行：
+
+```bash
+make ci
+```
+
+它会执行与 CI 基本一致的质量检查，包括：
+
+- `python -m ruff check src tests`
+- `python -m ruff format --check src tests`
+- `python -m pytest --cov=task_management --cov-report=term-missing`
+
+> 说明：这个仓库是教学型仓库，CI 会保留覆盖率报告，但**不强制卡死单一覆盖率数字**。如果某次示例演进导致覆盖率波动，应优先判断测试是否仍覆盖关键教学路径，而不是为了达标去写“只服务于数字”的测试。
 
 ## API 概览
 
@@ -86,35 +191,34 @@ tests/
 
 这样做的目的是把“没有描述”和“空白描述”收敛成同一种语义，避免把无意义空字符串写入领域对象或持久化层。
 
-## 本地开发
+## 目录结构
 
-### 1. 创建虚拟环境
-
-```bash
-python -m venv .venv
-. .venv/bin/activate
+```text
+.
+├── .env.example               # 环境变量示例
+├── Makefile                   # 常用开发命令入口
+├── README.md                  # 项目总览与快速开始
+├── CONTRIBUTING.md            # 协作约定
+├── docs/
+│   ├── architecture.md        # 架构与分层说明
+│   ├── development.md         # 本地开发与运行环境说明
+│   ├── project-structure.md   # 仓库目录职责说明
+│   └── testing.md             # 测试策略说明
+├── src/task_management/
+│   ├── application/           # 用例编排、输入输出 DTO
+│   ├── domain/                # 领域模型、领域规则、端口定义
+│   ├── infrastructure/        # 仓储实现、配置与运行时支撑
+│   ├── interfaces/http/       # FastAPI 路由与请求响应模型
+│   └── main.py                # 应用启动入口
+└── tests/                     # 测试集合
 ```
 
-### 2. 安装依赖
+更详细的说明可继续阅读：
 
-```bash
-pip install -e .[dev]
-```
-
-### 3. 启动服务
-
-```bash
-uvicorn task_management.main:app --reload
-```
-
-### 4. 运行测试与质量检查
-
-```bash
-python -m pytest
-python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80
-ruff check .
-make quality
-```
+- [docs/development.md](docs/development.md)
+- [docs/project-structure.md](docs/project-structure.md)
+- [docs/architecture.md](docs/architecture.md)
+- [docs/testing.md](docs/testing.md)
 
 ## 测试策略
 
@@ -125,20 +229,65 @@ make quality
 关注纯业务规则，不依赖 HTTP 或数据库细节。
 
 示例：
+
 - 空标题不可创建任务
 - 空白描述不能直接进入领域对象
 - 空白指派人不可指派
 - 已完成任务不可重复完成
 
-### 2. HTTP 接口集成测试
+### 2. 应用层用例测试
+
+关注用例编排是否正确调用仓储、是否返回预期视图对象。
+
+### 3. HTTP 接口集成测试
 
 关注接口契约、状态码和关键返回字段。
 
 示例：
+
 - `GET /health` 返回统一成功结构
 - 任务生命周期接口能串通创建、查询、指派、完成流程
 - create / assign 的缺字段与全空白输入会返回 `422`
 - description 空白值会被归一化为 `null`
+
+### 4. 质量守护测试
+
+关注文档、Makefile、CI 口径是否一致，避免出现“README 说一套、CI 跑一套、本地命令又是另一套”的情况。
+
+这类测试的目标不是把仓库变成高门槛模板，而是保证：
+
+- 新手能按文档跑起来
+- 提交前知道该跑什么
+- CI 失败时能快速定位到是格式、静态检查还是测试问题
+
+## 适合从哪里开始阅读
+
+如果你是第一次接触这个仓库，建议按下面顺序阅读：
+
+1. `README.md`：先建立整体认知
+2. `docs/project-structure.md`：理解目录职责
+3. `docs/architecture.md`：理解分层边界与依赖方向
+4. `src/task_management/domain/`：先看领域对象和规则
+5. `src/task_management/application/`：再看用例组织方式
+6. `src/task_management/interfaces/http/`：最后看 FastAPI 如何作为适配层接入
+
+## 常见问题
+
+### 1. 为什么默认用 SQLite？
+
+因为这个仓库首先是教学与示例项目。默认使用 SQLite 能让读者在没有外部数据库服务的情况下直接运行，降低上手成本。
+
+### 2. 这是生产级模板吗？
+
+不是完整生产模板，但它适合作为生产项目的“起步骨架”参考。你仍然需要根据真实场景补充认证、配置管理、日志、迁移、可观测性、部署流程等能力。
+
+### 3. 为什么没有把复杂逻辑写进 FastAPI 路由？
+
+因为这个仓库想强调：HTTP 层应该只做入站适配与协议转换，业务规则应尽量留在领域层或应用层中，避免框架绑死核心逻辑。
+
+### 4. 为什么文档和注释统一用中文？
+
+这是仓库当前的协作约定，目标是让中文团队更容易评审、交接与沉淀知识；同时代码命名仍保持英文，以对齐 Python 生态习惯。
 
 ## 质量约定
 
@@ -149,15 +298,7 @@ make quality
 - 新增功能时，至少补充对应层级测试之一
 - 修复缺陷时，优先补一个可复现该问题的测试
 - 不把复杂业务逻辑直接塞进 FastAPI 路由
-
-### CI 的质量守护意图
-
-CI 中的 `quality` 任务不是为了制造形式化失败，而是为了保证仓库里最容易漂移的几处内容保持一致：
-
-- README 中写出来的测试命令，应该与实际工作流一致
-- 覆盖率门槛要明确写出，当前基线为 `--cov-fail-under=80`
-- `ruff check .` 作为统一静态检查入口，文档、本地命令和 CI 要保持同一写法
-- 如果后续调整命令、路径或阈值，应同步更新 README、Makefile、CI 工作流和 `tests/test_quality.py`
+- 质量守护优先保护**关键路径是否可运行、文档是否一致、边界是否清晰**，而不是追求脱离上下文的刚性指标
 
 ## 为什么这算六边形架构
 

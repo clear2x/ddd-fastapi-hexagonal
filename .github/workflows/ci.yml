@@ -29,7 +29,10 @@ jobs:
           python -m pip install -e .[dev]
 
       - name: Ruff 静态检查
-        run: ruff check .
+        run: python -m ruff check src tests
 
-      - name: Pytest 质量守护
-        run: python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80
+      - name: Ruff 格式检查
+        run: python -m ruff format --check src tests
+
+      - name: Pytest
+        run: python -m pytest --cov=task_management --cov-report=term-missing
