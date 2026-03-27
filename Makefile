@@ -6,8 +6,15 @@ install:
 run:
 	uvicorn task_management.main:app --reload
 
-test:
-	pytest
+check:
+	$(PYTHON) -m pytest
 
 lint:
-	ruff check src tests
+	ruff check .
+
+test:
+	$(PYTHON) -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80
+
+ci:
+	ruff check .
+	$(PYTHON) -m pytest --cov=task_management --cov-report=term-missing --cov-fail-under=80
