@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """应用层组装模块。
 
 这个模块显式表达“限界上下文内部如何完成依赖组装”。
