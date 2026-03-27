@@ -7,6 +7,8 @@ from pydantic import BaseModel, Field, field_validator
 
 
 class CreateTaskRequest(BaseModel):
+    # Request Model 是外部契约模型，不是领域对象。
+    # 它允许在边界层完成输入清洗与归一化，再交给 application / domain。
     title: str = Field(min_length=1, max_length=200)
     description: Optional[str] = Field(default=None, max_length=2000)
 

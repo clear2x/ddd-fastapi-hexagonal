@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional
 
+from task_management.application.read_models import TaskReadModel
 from task_management.domain.models import Task, TaskStatus
 
 
@@ -32,6 +33,8 @@ class ListTasksQuery:
 
 @dataclass(frozen=True)
 class TaskView:
+    # TaskView 是应用层对外输出的中间投影，目的是让 HTTP 层拿到稳定、可序列化的读模型，
+    # 而不是直接依赖领域对象内部结构。
     id: str
     title: str
     description: Optional[str]
@@ -48,6 +51,19 @@ class TaskView:
             title=task.title.value,
             description=task.description.value if task.description is not None else None,
             assignee_id=task.assignee_id.value if task.assignee_id is not None else None,
+            status=task.status,
+            created_at=task.created_at,
+            updated_at=task.updated_at,
+            completed_at=task.completed_at,
+        )
+
+    @staticmethod
+    def from_read_model(task: TaskReadModel) -> "TaskView":
+        return TaskView(
+            id=task.id,
+            title=task.title,
+            description=task.description,
+            assignee_id=task.assignee_id,
             status=task.status,
             created_at=task.created_at,
             updated_at=task.updated_at,

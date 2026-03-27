@@ -12,6 +12,7 @@
 - 如何让 FastAPI 只承担输入适配职责，而不是吞掉全部业务逻辑
 - 如何通过测试验证领域规则与 HTTP 接口行为
 - 如何在小项目里就建立基础质量约定、PR 模板与 CI 检查
+- 如何通过清晰边界让 application / domain / interfaces 的职责分工更贴近 DDD
 
 ## 示例业务域
 
@@ -27,16 +28,16 @@
 
 ```text
 src/task_management/
-  domain/                # 任务管理限界上下文的领域核心
-  application/           # 用例编排、输入输出 DTO、ACL 协议、依赖组装
-  infrastructure/        # 数据库与仓储实现等基础设施
+  domain/                # 任务管理限界上下文的领域核心、领域事件、领域服务
+  application/           # 用例编排、输入输出 DTO、读模型查询、事件投影
+  infrastructure/        # 数据库、仓储、事件总线与查询实现
   interfaces/http/       # FastAPI 路由与请求/响应模型
   interfaces/acl/        # 防腐层适配器示例
 
 tests/
   test_api.py            # HTTP 接口集成测试
-  test_application.py    # 应用层用例测试
-  test_domain.py         # 领域模型单元测试
+  test_application.py    # 应用层用例与读模型投影测试
+  test_domain.py         # 领域模型、领域事件、领域服务单元测试
 ```
 
 当前仓库只有一个显式 bounded context：`task_management`。
@@ -222,6 +223,24 @@ python -m pytest --cov=task_management --cov-report=term-missing --cov-fail-unde
 > 业务规则应尽量独立于 Web 框架、数据库与外部交互细节。
 
 这样测试会更清晰，替换适配器也更容易。
+
+## 这次补充了哪些更“DDD”的东西
+
+为了保持教学仓库的小而清晰，这次没有大改 HTTP 层，而是在 domain / application 深化了三件事：
+
+- **领域事件**：`Task` 聚合会记录 `task.created`、`task.assigned`、`task.completed`
+- **领域服务**：`TaskDomainService` 承担“已完成任务不能再次指派”的状态策略判断
+- **查询读模型**：新增 `task_read_models` 查询表，`GET /tasks` 与 `GET /tasks/{id}` 从读模型读取
+
+这样可以直观看到一个更贴近 DDD/CQRS 入门版的流转：
+
+1. HTTP 层把请求翻译成命令
+2. 应用层驱动聚合执行业务动作
+3. 聚合产生领域事件
+4. 事件总线把事件投影到查询侧读模型
+5. 查询接口从读模型返回结果
+
+虽然这里仍然是单进程、同步实现，但教学上已经能把“命令侧”和“查询侧”的职责区分开。
 
 ## 为什么这里还强调 bounded context 与 ACL
 

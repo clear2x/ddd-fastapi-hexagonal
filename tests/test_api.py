@@ -74,6 +74,20 @@ def test_returns_standard_validation_error_when_title_is_blank() -> None:
     assert body["error"]["details"][0]["field"] == "title"
 
 
+def test_validation_error_details_are_translated_to_public_contract() -> None:
+    response = client.post(
+        "/api/v1/tasks",
+        json={"description": "demo"},
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    detail = body["error"]["details"][0]
+    assert set(detail.keys()) == {"field", "message", "type"}
+    assert detail["field"] == "title"
+    assert body["error"]["code"] == "REQUEST_VALIDATION_ERROR"
+
+
 def test_create_task_normalizes_blank_description_to_none() -> None:
     response = client.post(
         "/api/v1/tasks",
@@ -124,3 +138,19 @@ def test_assign_task_returns_validation_error_when_assignee_is_missing() -> None
     body = response.json()
     assert body["error"]["code"] == "REQUEST_VALIDATION_ERROR"
     assert body["error"]["details"][0]["field"] == "assignee_id"
+
+
+def test_completion_conflict_expresses_state_conflict_not_validation_failure() -> None:
+    create_response = client.post("/api/v1/tasks", json={"title": "Conflict semantics"})
+    task_id = create_response.json()["data"]["id"]
+
+    client.post(f"/api/v1/tasks/{task_id}/completion")
+    response = client.post(f"/api/v1/tasks/{task_id}/completion")
+
+    assert response.status_code == 409
+    body = response.json()
+    assert body["error"] == {
+        "code": "TASK_ALREADY_COMPLETED",
+        "message": "任务已完成，不能重复完成。",
+        "details": [],
+    }

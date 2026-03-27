@@ -12,6 +12,7 @@ from task_management.domain.errors import (
     InvalidTaskTitleError,
     TaskAlreadyCompletedError,
 )
+from task_management.domain.events import DomainEvent, TaskAssignedEvent, TaskCompletedEvent, TaskCreatedEvent
 
 
 class TaskStatus(str, Enum):
@@ -78,20 +79,32 @@ class Task:
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
+    _domain_events: list[DomainEvent] = field(default_factory=list, init=False, repr=False)
 
     @classmethod
     def create(cls, title: str, description: Optional[str] = None) -> "Task":
-        return cls(
+        task = cls(
             id=TaskId.new(),
             title=TaskTitle(title),
             description=TaskDescription(description) if description is not None else None,
         )
+        task._record_event(
+            TaskCreatedEvent(
+                task_id=task.id.value,
+                title=task.title.value,
+                description=task.description.value if task.description is not None else None,
+            )
+        )
+        return task
 
     def assign(self, assignee_id: str) -> None:
         self.assignee_id = AssigneeId(assignee_id)
         if self.status != TaskStatus.COMPLETED:
             self.status = TaskStatus.ASSIGNED
         self.updated_at = datetime.now(timezone.utc)
+        self._record_event(
+            TaskAssignedEvent(task_id=self.id.value, assignee_id=self.assignee_id.value)
+        )
 
     def complete(self) -> None:
         if self.status == TaskStatus.COMPLETED:
@@ -100,3 +113,14 @@ class Task:
         self.status = TaskStatus.COMPLETED
         self.completed_at = now
         self.updated_at = now
+        self._record_event(TaskCompletedEvent(task_id=self.id.value, completed_at=now))
+
+    def pull_domain_events(self) -> list[DomainEvent]:
+        """拉取并清空聚合内积累的领域事件。"""
+        events = list(self._domain_events)
+        self._domain_events.clear()
+        return events
+
+    def _record_event(self, event: DomainEvent) -> None:
+        """记录聚合内发生的领域事件，等待应用层统一发布。"""
+        self._domain_events.append(event)
